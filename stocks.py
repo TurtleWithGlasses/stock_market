@@ -2,6 +2,8 @@ import customtkinter as ctk
 from settings import *
 import yfinance as yf
 from datetime import datetime
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class App(ctk.CTk):
     def __init__(self):
@@ -12,13 +14,33 @@ class App(ctk.CTk):
         # data
         self.input_string = ctk.StringVar(value="AAPL")
         self.time_string = ctk.StringVar(value=TIME_OPTIONS[0])
+        self.time_string.trace("w",self.create_graph)
+        self.has_data = False
 
         # widgets
+        self.graph_panel = None
         InputPanel(self,self.input_string,self.time_string)
-
         self.bind("<Return>",self.input_handler)
 
         self.mainloop()
+
+    def create_graph(self,*args):
+        if self.graph_panel: self.graph_panel.pack_forget()
+
+        if self.has_data:
+            match self.time_string.get():
+                case "Max":
+                    data = self.max
+                case "1 Year":
+                    data = self.year
+                case "6 Months":
+                    data = self.six_months
+                case "Month":
+                    data = self.one_month
+                case "Week":
+                    data = self.one_week
+
+        self.graph_panel = GraphPanel(self,data)
 
     def input_handler(self,event=None):
             ticker = yf.Ticker(self.input_string.get())
@@ -30,9 +52,10 @@ class App(ctk.CTk):
             self.six_months = self.max.iloc[-130:]
             self.one_month = self.max.iloc[-22:]
             self.one_week = self.max.iloc[-5:]
-            
-            
+            self.has_data = True
 
+            self.create_graph()
+            
 class InputPanel(ctk.CTkFrame):
     def __init__(self,parent,input_string,time_string):
         super().__init__(parent,fg_color=INPUT_BG_COLOR,corner_radius=0)
@@ -73,6 +96,35 @@ class TextButton(ctk.CTkLabel):
     
     def unselect(self):
         self.configure(text_color=TEXT_COLOR)
+
+class GraphPanel(ctk.CTkFrame):
+    def __init__(self,parent,data):
+        super().__init__(parent,fg_color=BG_COLOR)
+        self.pack(expand=True,fill="both")
+
+        # figure
+        figure = plt.Figure()
+        figure.subplots_adjust(left=0,right=0.98,bottom=0,top=1)
+        figure.patch.set_facecolor(BG_COLOR)
+
+        # graph
+        ax = figure.add_subplot(111)
+        ax.set_facecolor(BG_COLOR)       
+        
+        for side in ["top","left","right","bottom"]:
+            ax.spines[side].set_color(BG_COLOR)
+
+        line = ax.plot(data["Close"])[0]
+        line.set_color(HIGHLIGHT_COLOR)
+
+        # ticks
+        ax.tick_params(axis="x",direction="in",pad=-14,colors=TICK_COLOR)
+        ax.yaxis.tick_right()
+        ax.tick_params(axis="y",direction="in",pad=1,colors=TICK_COLOR)
+
+        # widget
+        figure_widget = FigureCanvasTkAgg(figure,master=self)
+        figure_widget.get_tk_widget().pack(fill="both",expand=True)
 
 
 App()

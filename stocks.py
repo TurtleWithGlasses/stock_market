@@ -1,5 +1,7 @@
 import customtkinter as ctk
 from settings import *
+import yfinance as yf
+from datetime import datetime
 
 class App(ctk.CTk):
     def __init__(self):
@@ -14,7 +16,22 @@ class App(ctk.CTk):
         # widgets
         InputPanel(self,self.input_string,self.time_string)
 
+        self.bind("<Return>",self.input_handler)
+
         self.mainloop()
+
+    def input_handler(self,event=None):
+            ticker = yf.Ticker(self.input_string.get())
+            start = datetime(1959,1,1)
+            end = datetime.today()
+
+            self.max = ticker.history(start=start,end=end,period="1d")
+            self.year = self.max.iloc[-260:]
+            self.six_months = self.max.iloc[-130:]
+            self.one_month = self.max.iloc[-22:]
+            self.one_week = self.max.iloc[-5:]
+            
+            
 
 class InputPanel(ctk.CTkFrame):
     def __init__(self,parent,input_string,time_string):
